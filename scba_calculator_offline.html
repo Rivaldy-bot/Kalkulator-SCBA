@@ -1,0 +1,188 @@
+<!--
+SCBA-Calculator-Offline.html
+Deskripsi: Kalkulator Perhitungan SCBA (offline, satu file) - bisa langsung di-host di GitHub Pages.
+Panduan singkat hosting di GitHub Pages:
+1. Buat repository baru di GitHub (misal: scba-calculator).
+2. Tambahkan file ini (SCBA-Calculator-Offline.html) ke root repo (Upload file atau push via git).
+3. Di Settings -> Pages, pilih source: Branch 'main' (atau 'master') dan folder '/ (root)'. Simpan.
+4. Tunggu beberapa menit, lalu akses: https://<username>.github.io/<repo-name>/SCBA-Calculator-Offline.html
+
+PERINGATAN: Alat ini dibuat untuk membantu perhitungan perkiraan saja. Jangan gunakan sebagai satu-satunya acuan keselamatan hidup atau operasi kritis. Verifikasi perhitungan dengan SOP perusahaan, manual pabrikan, dan petugas keselamatan.
+-->
+
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kalkulator SCBA - Offline</title>
+  <style>
+    :root{--bg:#f4f6fb;--card:#ffffff;--accent:#0b63d6;--muted:#6b7280}
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    body{background:linear-gradient(180deg,#eef3ff 0%,var(--bg) 100%);display:flex;align-items:center;justify-content:center;padding:28px}
+    .container{width:100%;max-width:980px}
+    .card{background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(12,20,50,0.06);padding:22px}
+    h1{margin:0 0 8px;font-size:20px}
+    p.lead{color:var(--muted);margin-top:0}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    label{display:block;font-weight:600;margin-bottom:6px;font-size:13px}
+    input[type="number"],select{width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px;font-size:14px}
+    .row{margin-bottom:12px}
+    .full{grid-column:1/-1}
+    .actions{display:flex;gap:10px;align-items:center;margin-top:8px}
+    button{background:var(--accent);color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+    button.secondary{background:#eef2ff;color:var(--accent);font-weight:600;border:1px solid #dbeafe}
+    .result{background:#f8fafc;padding:16px;border-radius:10px;border:1px dashed #e6eefc}
+    pre{background:#0b1220;color:#e6f0ff;padding:12px;border-radius:8px;overflow:auto}
+    footer{font-size:12px;color:var(--muted);margin-top:12px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}.actions{flex-direction:column;align-items:stretch}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Kalkulator SCBA (Offline)</h1>
+      <p class="lead">Hitung estimasi durasi udara SCBA berdasarkan ukuran tabung, tekanan kerja, pressure reserve, dan laju pernapasan (breathing rate). Bahasa: Indonesia.</p>
+
+      <div class="grid" style="margin-top:14px">
+        <div class="row">
+          <label for="cylSize">Volume Tabung (L) — Contoh: 6.8</label>
+          <input id="cylSize" type="number" step="0.1" min="0" value="6.8">
+        </div>
+
+        <div class="row">
+          <label for="pressure">Tekanan Awal (bar) — Contoh: 300</label>
+          <input id="pressure" type="number" step="1" min="0" value="300">
+        </div>
+
+        <div class="row">
+          <label for="reserve">Reservasi Tekanan (bar) — Contoh: 40</label>
+          <input id="reserve" type="number" step="1" min="0" value="40">
+        </div>
+
+        <div class="row">
+          <label for="breathingRate">Laju Pernapasan (L/menit)</label>
+          <select id="breathingRate">
+            <option value="20">Ringan — 20 L/min</option>
+            <option value="30">Aktivitas Ringan — 30 L/min</option>
+            <option value="40">Aktivitas Sedang — 40 L/min</option>
+            <option value="55">Aktivitas Berat — 55 L/min</option>
+            <option value="80">Sangat Berat — 80 L/min</option>
+            <option value="custom">Kustom...</option>
+          </select>
+          <input id="breathingRateCustom" type="number" step="1" min="1" value="35" style="margin-top:8px;display:none">
+        </div>
+
+        <div class="row full">
+          <label for="safetyMargin">Margin Keamanan (%) — Tambahan safety reserve</label>
+          <input id="safetyMargin" type="number" step="1" min="0" value="10">
+        </div>
+
+        <div class="row full actions">
+          <button id="calcBtn">Hitung Durasi</button>
+          <button id="explainBtn" class="secondary">Tampilkan Langkah Perhitungan</button>
+          <button id="copyBtn" class="secondary">Salin Hasil</button>
+        </div>
+
+        <div class="row full result" id="resultBox" style="display:block">
+          <strong>Hasil:</strong>
+          <div id="output" style="margin-top:8px">Tekan "Hitung Durasi" untuk memulai.</div>
+        </div>
+
+        <div class="row full" id="explain" style="display:none">
+          <label>Langkah Perhitungan (ditampilkan):</label>
+          <pre id="explainText">--</pre>
+        </div>
+
+      </div>
+
+      <footer>
+        Catatan: Perhitungan dasar yang dipakai:
+        <ul>
+          <li>Volume nyata udara (L) = Volume tabung (L) × (Tekanan kerja (bar) − Reservasi (bar)).</li>
+          <li>Durasi (menit) = (Volume nyata udara / laju pernapasan (L/menit)) × (1 − margin_keamanan%).</li>
+        </ul>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const cylSize = document.getElementById('cylSize');
+    const pressure = document.getElementById('pressure');
+    const reserve = document.getElementById('reserve');
+    const breathingRate = document.getElementById('breathingRate');
+    const breathingRateCustom = document.getElementById('breathingRateCustom');
+    const safetyMargin = document.getElementById('safetyMargin');
+    const calcBtn = document.getElementById('calcBtn');
+    const output = document.getElementById('output');
+    const explain = document.getElementById('explain');
+    const explainText = document.getElementById('explainText');
+    const explainBtn = document.getElementById('explainBtn');
+    const copyBtn = document.getElementById('copyBtn');
+
+    breathingRate.addEventListener('change', () => {
+      if (breathingRate.value === 'custom') {
+        breathingRateCustom.style.display = 'block';
+      } else {
+        breathingRateCustom.style.display = 'none';
+      }
+    });
+
+    function secToMinSec(totalMinutesFloat) {
+      if (!isFinite(totalMinutesFloat) || totalMinutesFloat <= 0) return '0:00';
+      const totalSeconds = Math.round(totalMinutesFloat * 60);
+      const mm = Math.floor(totalSeconds / 60);
+      const ss = totalSeconds % 60;
+      return mm + ':' + String(ss).padStart(2,'0');
+    }
+
+    calcBtn.addEventListener('click', () => {
+      const V = parseFloat(cylSize.value) || 0; // L
+      const P = parseFloat(pressure.value) || 0; // bar
+      const R = parseFloat(reserve.value) || 0; // bar
+      let BR = breathingRate.value === 'custom' ? parseFloat(breathingRateCustom.value) : parseFloat(breathingRate.value);
+      BR = Number(BR) || 0;
+      const M = parseFloat(safetyMargin.value) || 0; // percent
+
+      if (V <= 0 || P <= 0 || BR <= 0) {
+        output.innerHTML = '<span style="color:#b91c1c;font-weight:700">Masukkan nilai volume, tekanan, dan laju pernapasan yang valid.</span>';
+        explain.style.display = 'none';
+        return;
+      }
+
+      // Perhitungan: total tersedia dalam liter = V * (P - R)
+      const availableLiters = V * Math.max(0, (P - R));
+      // Durasi (menit) tanpa margin
+      const durationMinRaw = availableLiters / BR;
+      // Terapkan margin keamanan: kurangi durasi sebesar margin persen
+      const durationMinWithMargin = durationMinRaw * (1 - (M / 100));
+
+      // Tampilkan hasil dengan detail
+      const durationText = secToMinSec(durationMinWithMargin);
+
+      output.innerHTML = `Volume tabung efektif: <strong>${availableLiters.toLocaleString(undefined,{maximumFractionDigits:1})} L</strong><br>
+      Durasi (teoretis tanpa margin): <strong>${durationMinRaw.toFixed(2)} menit</strong><br>
+      Durasi setelah margin keamanan ${M}%: <strong>${durationMinWithMargin.toFixed(2)} menit</strong> → <strong>${durationText} (mm:ss)</strong>`;
+
+      explainText.textContent = `Input:\n  Volume tabung (L) = ${V}\n  Tekanan awal (bar) = ${P}\n  Reservasi (bar) = ${R}\n  Laju pernapasan (L/menit) = ${BR}\n  Margin keamanan = ${M}%\n\nPerhitungan:\n  Volume nyata (L) = V × (P − R) = ${V} × (${P} − ${R}) = ${availableLiters} L\n  Durasi tanpa margin (menit) = Volume nyata / BR = ${availableLiters} / ${BR} = ${durationMinRaw.toFixed(4)} menit\n  Durasi setelah margin = durasi × (1 − M/100) = ${durationMinRaw.toFixed(4)} × ${(1 - M/100).toFixed(4)} = ${durationMinWithMargin.toFixed(4)} menit\n\nCatatan: Hasil ini adalah estimasi. Periksa SOP, kondisi pengguna (stress, workload, pakaian), dan faktor lainnya.`;
+      explain.style.display = 'block';
+    });
+
+    explainBtn.addEventListener('click', () => {
+      if (explain.style.display === 'none') explain.style.display = 'block';
+      else explain.style.display = 'none';
+    });
+
+    copyBtn.addEventListener('click', () => {
+      const text = output.innerText || output.textContent || '';
+      navigator.clipboard && navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = 'Disalin ✓';
+        setTimeout(()=>copyBtn.textContent='Salin Hasil',1500);
+      }, () => {
+        alert('Gagal menyalin — silakan salin secara manual.');
+      });
+    });
+
+  </script>
+</body>
+</html>
